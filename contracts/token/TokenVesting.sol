@@ -121,7 +121,11 @@ contract TokenVesting is Ownable {
 
             uint256 amount = getVestedTokenAmount(poolId, msgSender);
 
-            require(amount > 0, "TokenVesting: no tokens are due");
+            if (amount == 0) {
+                continue;
+            }
+
+            total += amount;
 
             Beneficiary storage beneficiary = beneficiaries[poolId][msgSender];
 
@@ -131,11 +135,11 @@ contract TokenVesting is Ownable {
             pools[poolId].balance -= amount;
 
             emit TokenReleased(poolId, msgSender, amount);
-
-            total += amount;
         }
 
-        token.safeTransfer(msgSender, total);
+        if (total > 0) {
+            token.safeTransfer(msgSender, total);
+        }
     }
 
     function getVestedTokenAmount(uint256 _poolId, address _account)
