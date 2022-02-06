@@ -103,26 +103,39 @@ contract TokenVesting is Ownable {
         token.safeTransferFrom(_msgSender(), address(this), total);
     }
 
-    function releaseToken(uint256 _poolId)
+    function releaseToken(uint256[] memory _poolIds)
         external
-        poolExist(_poolId)
     {
+        uint256 length = _poolIds.length;
+
+        require(length > 0, "TokenVesting: array length is invalid");
+
+        uint256 total = 0;
+
         address msgSender = _msgSender();
 
-        uint256 amount = getVestedTokenAmount(_poolId, msgSender);
+        for (uint256 i = 0; i < length; i++) {
+            uint256 poolId = _poolIds[i];
 
-        require(amount > 0, "TokenVesting: no tokens are due");
+            require(pools[poolId].duration > 0, "TokenVesting: pool does not exist");
 
-        Beneficiary storage beneficiary = beneficiaries[_poolId][msgSender];
+            uint256 amount = getVestedTokenAmount(poolId, msgSender);
 
-        beneficiary.balance -= amount;
-        beneficiary.released += amount;
+            require(amount > 0, "TokenVesting: no tokens are due");
 
-        pools[_poolId].balance -= amount;
+            Beneficiary storage beneficiary = beneficiaries[poolId][msgSender];
 
-        token.safeTransfer(msgSender, amount);
+            beneficiary.balance -= amount;
+            beneficiary.released += amount;
 
-        emit TokenReleased(_poolId, msgSender, amount);
+            pools[poolId].balance -= amount;
+
+            emit TokenReleased(poolId, msgSender, amount);
+
+            total += amount;
+        }
+
+        token.safeTransfer(msgSender, total);
     }
 
     function getVestedTokenAmount(uint256 _poolId, address _account)
